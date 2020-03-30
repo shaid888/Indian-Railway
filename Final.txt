@@ -1,0 +1,116 @@
+#include<stdio.h>
+#include<stdlib.h>
+#include<pthread.h>
+#include<unistd.h>
+#include<sys/types.h>
+#include<sys/wait.h>
+#include<semaphore.h> 
+int allPassengerSeated =0; 
+int trainArrived = 0; 
+int leftover =0;
+int seatingcounter = 0;
+struct station
+{	
+	int noOfSeatsLeft;	
+	int waitingPassenger;
+	int seatedPassenger;
+	sem_t lock;	
+}a;
+void station_init()
+{
+	seatingcounter = 0;
+	leftover =0;
+	printf("\nEnter the train's Capacity: ");
+	scanf("%d",&a.noOfSeatsLeft);
+	if(a.noOfSeatsLeft==0)
+	{
+		printf("Train is already FULL!!!\n");
+		exit(0);
+	}
+	if(a.noOfSeatsLeft<0)
+	{
+		printf("Seats cannot be negative!!\n");
+		exit(0);
+	}	
+	printf("Enter the No. of Passenger that are willing to board at Station: ");
+	scanf("%d",&a.waitingPassenger);
+	if(a.waitingPassenger<0)
+	{
+		printf("Passenger cannot be negative!!\n");
+		exit(0);
+	}
+	if(a.waitingPassenger>a.noOfSeatsLeft)
+	{
+		leftover = a.waitingPassenger-a.noOfSeatsLeft;
+		printf("\n\n%d Passenger will be left at Station.\n\n",leftover);
+		a.waitingPassenger=a.noOfSeatsLeft;				
+	}	
+}
+void* station_load_train(void *args)
+{
+	printf("Train has arrived at the station and has opened it's doors!!!\n\n ");		
+	struct station *p =(struct station *)args;
+	trainArrived = 1;
+	sleep(10);
+	if(p->noOfSeatsLeft<0)
+	{
+		printf("\nSeats Left: 0\n");	
+	}
+	if(allPassengerSeated ==1 || p->noOfSeatsLeft==0)
+	{
+		printf("\nSeats Left: %d\n",p->noOfSeatsLeft);
+		printf("\nTrain Has Departed\n");
+	}
+	if(leftover>0)
+	{
+		printf("\nLeftover Passengers = %d\n",leftover);		
+	}	
+}
+void station_on_board(struct station *st)
+{
+	seatingcounter++;
+	sem_wait(&a.lock);
+	allPassengerSeated =0;
+	st->noOfSeatsLeft--;
+	printf("%d Passenger have seated Successfully\n",seatingcounter);
+	allPassengerSeated =1;
+	sem_post(&a.lock);
+}
+void* station_wait_for_train(void *args)
+{		
+	struct station *p =(struct station *)args;
+	if((trainArrived == 1) && (p->noOfSeatsLeft>0))
+	{
+		station_on_board(p);	
+	}
+}
+int main()
+{	
+	int i =0,arr=0;
+	printf("\tIndian Railways is Booting.\n");
+	for( i =0;i<10;i++)
+	{
+		printf("\n");	
+		sleep(1);
+	}printf("\n\n");	
+	while(1)
+	{
+	printf("\nTo Exit, PRESS CTRL + C\n");
+	station_init();
+	pthread_t train, Passenger[allwaiting+1];
+   	sem_init(&a.lock, 0, 1);
+  	pthread_create(&train, NULL, station_load_train, &S);
+	sleep(5);
+    	for (i = 0;i<allwaiting; i++) 
+	{ 
+        pthread_create(&Passenger[i], NULL, station_wait_for_train, &a); 
+  	printf("Passanger %d is arrived at Station\n",i+1); 
+    	}	
+	for (i = 0;i<allwaiting;i++)
+	{
+        pthread_join(Passenger[i], NULL);	
+	}	
+	pthread_join(train, NULL);	
+	}	
+	return 0;
+}
